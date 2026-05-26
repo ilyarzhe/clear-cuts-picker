@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Select Spreadsheet</title>
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #f8f9fa;
+    color: #202124;
+}
+#content { text-align: center; padding: 40px; max-width: 480px; }
+h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
+#status { color: #5f6368; font-size: 14px; }
+#error { color: #d93025; font-size: 14px; line-height: 1.5; display: none; }
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #e8eaed; border-top-color: #1a73e8; border-radius: 50%; animation: spin .8s linear infinite; margin-right: 8px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="content">
+    <h1>Select a Spreadsheet</h1>
+    <div id="status"><span class="spinner"></span>Loading Google Picker...</div>
+    <div id="error"></div>
+</div>
+<script>
+(function() {
+    var params = new URLSearchParams(window.location.search.substring(1));
+    var extId = params.get('extId');
+
+    var hash = window.location.hash.substring(1);
+    var hashParams = new URLSearchParams(hash);
+    var token = hashParams.get('token');
+    var apiKey = hashParams.get('apiKey');
+
+    function showError(msg) {
+        document.getElementById('status').style.display = 'none';
+        var errEl = document.getElementById('error');
+        errEl.style.display = 'block';
+        errEl.textContent = msg || 'An unexpected error occurred.';
+        if (extId && chrome && chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage(extId, { type: 'pickerResult', error: msg || 'Unknown error' });
+        }
+    }
+
+    if (!extId || !token || !apiKey) {
+        showError('Missing required parameters. Please close this tab and try again.');
+        return;
+    }
+
+    function onPickerApiLoad() {
+        try {
+            var view = new google.picker.View(google.picker.ViewId.SPREADSHEETS);
+            var picker = new google.picker.PickerBuilder()
+                .setOAuthToken(token)
+                .setDeveloperKey(apiKey)
+                .addView(view)
+                .setCallback(function(data) {
+                    if (data.action === google.picker.Action.PICKED) {
+                        var doc = data.docs[0];
+                        if (extId && chrome && chrome.runtime && chrome.runtime.sendMessage) {
+                            chrome.runtime.sendMessage(extId, {
+                                type: 'pickerResult',
+                                fileId: doc.id,
+                                fileName: doc.name,
+                                fileUrl: doc.url
+                            }, function() {});
+                        }
+                    } else if (data.action === google.picker.Action.CANCEL) {
+                        if (extId && chrome && chrome.runtime && chrome.runtime.sendMessage) {
+                            chrome.runtime.sendMessage(extId, {
+                                type: 'pickerResult',
+                                cancelled: true
+                            }, function() {});
+                        }
+                    }
+                })
+                .build();
+            picker.setVisible(true);
+        } catch (e) {
+            showError('Failed to initialize Google Picker. Token may be expired. Close this tab and try reconnecting.');
+        }
+    }
+
+    var script = document.createElement('script');
+    script.src = 'https://apis.google.com/js/api.js';
+    script.onload = function() {
+        gapi.load('picker', { callback: onPickerApiLoad });
+    };
+    script.onerror = function() {
+        showError('Failed to load Google Picker. Check your internet connection and try again.');
+    };
+    document.head.appendChild(script);
+})();
+</script>
+</body>
+</html>
