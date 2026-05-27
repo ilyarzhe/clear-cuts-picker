@@ -33,6 +33,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
 <script>
 (function() {
     var params = new URLSearchParams(window.location.search.substring(1));
+    var appId = params.get('appId');
     var extId = params.get('extId');
 
     var hash = window.location.hash.substring(1);
