@@ -18,8 +18,18 @@ body {
 }
 #content { text-align: center; padding: 40px; max-width: 480px; }
 h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
-#hint { color: #5f6368; font-size: 13px; margin-bottom: 8px; display: none; }
-#hint.visible { display: block; }
+#hint {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 13px;
+    padding: 10px 16px;
+    text-align: center;
+}
 #status { color: #5f6368; font-size: 14px; }
 #error { color: #d93025; font-size: 14px; line-height: 1.5; display: none; }
 .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #e8eaed; border-top-color: #1a73e8; border-radius: 50%; animation: spin .8s linear infinite; margin-right: 8px; vertical-align: middle; }
@@ -30,7 +40,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
 <div id="content">
     <h1>Select Spreadsheets</h1>
     <div id="status"><span class="spinner"></span>Loading Google Picker...</div>
-    <div id="hint">Tip: Check multiple files to grant access in one go</div>
+    <div id="hint">Tip: check files to select multiple — click any file below</div>
     <div id="error"></div>
 </div>
 <script>
@@ -58,12 +68,15 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
         pickerReady = true;
         try {
             var view = new google.picker.DocsView()
-                .setMimeTypes('application/vnd.google-apps.spreadsheet');
+                .setMimeTypes('application/vnd.google-apps.spreadsheet')
+                .setDisplayMode(google.picker.DocsViewMode.LIST);
             var picker = new google.picker.PickerBuilder()
                 .setOAuthToken(token)
                 .setDeveloperKey(apiKey)
                 .setAppId(appId)
                 .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+                .enableFeature(google.picker.Feature.NAV_HIDDEN)
+                .setTitle('Select Spreadsheets — pick multiple')
                 .addView(view)
                 .setCallback(function(data) {
                     if (data.action === google.picker.Action.PICKED) {
@@ -129,8 +142,6 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
     }
 
     requestPickerAuth();
-
-    document.getElementById('hint').className = 'visible';
 
     var gapiLoadTimeout = setTimeout(function() {
         if (!pickerApiLoaded) {
