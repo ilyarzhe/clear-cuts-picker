@@ -40,7 +40,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
 <div id="content">
     <h1>Select Spreadsheets</h1>
     <div id="status"><span class="spinner"></span>Loading Google Picker...</div>
-    <div id="hint">Tip: check files to select multiple — click any file below</div>
+    <div id="hint">Tip: use shift/cmd + click to select multiple spreadsheets</div>
     <div id="error"></div>
 </div>
 <script>
@@ -76,7 +76,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                 .setAppId(appId)
                 .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
                 .enableFeature(google.picker.Feature.NAV_HIDDEN)
-                .setTitle('Select Spreadsheets — pick multiple')
+                .setTitle('Select Spreadsheets')
                 .addView(view)
                 .setCallback(function(data) {
                     if (data.action === google.picker.Action.PICKED) {
