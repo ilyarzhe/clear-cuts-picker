@@ -69,7 +69,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
         try {
             var view = new google.picker.DocsView()
                 .setMimeTypes('application/vnd.google-apps.spreadsheet')
-                .setDisplayMode(google.picker.DocsViewMode.LIST);
+                .setMode(google.picker.DocsViewMode.LIST);
             var picker = new google.picker.PickerBuilder()
                 .setOAuthToken(token)
                 .setDeveloperKey(apiKey)
