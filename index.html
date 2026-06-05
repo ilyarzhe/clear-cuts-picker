@@ -33,30 +33,26 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
 <script>
 (function() {
     var params = new URLSearchParams(window.location.search.substring(1));
-    var appId = params.get('appId');
     var extId = params.get('extId');
-
-    var hash = window.location.hash.substring(1);
-    var hashParams = new URLSearchParams(hash);
-    var token = hashParams.get('token');
-    var apiKey = hashParams.get('apiKey');
+    var appId = params.get('appId');
+    var apiKey = params.get('apiKey') || null;
+    var token = null;
+    var pickerApiLoaded = false;
+    var pickerReady = false;
 
     function showError(msg) {
         document.getElementById('status').style.display = 'none';
         var errEl = document.getElementById('error');
         errEl.style.display = 'block';
         errEl.textContent = msg || 'An unexpected error occurred.';
-        if (extId && chrome && chrome.runtime && chrome.runtime.sendMessage) {
+        if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
             chrome.runtime.sendMessage(extId, { type: 'pickerResult', error: msg || 'Unknown error' });
         }
     }
 
-    if (!extId || !token || !apiKey) {
-        showError('Missing required parameters. Please close this tab and try again.');
-        return;
-    }
-
-    function onPickerApiLoad() {
+    function buildPicker() {
+        if (pickerReady || !pickerApiLoaded || !token || !apiKey) return;
+        pickerReady = true;
         try {
             var view = new google.picker.View(google.picker.ViewId.SPREADSHEETS);
             var picker = new google.picker.PickerBuilder()
@@ -67,7 +63,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                 .setCallback(function(data) {
                     if (data.action === google.picker.Action.PICKED) {
                         var doc = data.docs[0];
-                        if (extId && chrome && chrome.runtime && chrome.runtime.sendMessage) {
+                        if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
                             chrome.runtime.sendMessage(extId, {
                                 type: 'pickerResult',
                                 fileId: doc.id,
@@ -76,7 +72,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                             }, function() {});
                         }
                     } else if (data.action === google.picker.Action.CANCEL) {
-                        if (extId && chrome && chrome.runtime && chrome.runtime.sendMessage) {
+                        if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
                             chrome.runtime.sendMessage(extId, {
                                 type: 'pickerResult',
                                 cancelled: true
@@ -91,12 +87,47 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
         }
     }
 
+    function requestPickerAuth() {
+    if (!extId || !appId || !apiKey) {
+        showError('Missing required parameters. Please close this tab and try again.');
+        return;
+    }
+        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+            showError('Could not connect to the extension. Close this tab and try again.');
+            return;
+        }
+        chrome.runtime.sendMessage(extId, { type: 'pickerAuthRequest' }, function(response) {
+            if (chrome.runtime.lastError || !response || !response.token) {
+                console.error('[ClearCuts Picker] Failed to get auth token:', chrome.runtime.lastError ? chrome.runtime.lastError.message : 'no token in response');
+                showError('Could not load your Google token. Close this tab and try reconnecting.');
+                return;
+            }
+            token = response.token;
+            buildPicker();
+        });
+    }
+
+    function onPickerApiLoad() {
+        pickerApiLoaded = true;
+        buildPicker();
+    }
+
+    requestPickerAuth();
+
+    var gapiLoadTimeout = setTimeout(function() {
+        if (!pickerApiLoaded) {
+            showError('Google Picker failed to load. Check your internet connection and try again.');
+        }
+    }, 15000);
+
     var script = document.createElement('script');
     script.src = 'https://apis.google.com/js/api.js';
     script.onload = function() {
+        clearTimeout(gapiLoadTimeout);
         gapi.load('picker', { callback: onPickerApiLoad });
     };
     script.onerror = function() {
+        clearTimeout(gapiLoadTimeout);
         showError('Failed to load Google Picker. Check your internet connection and try again.');
     };
     document.head.appendChild(script);
