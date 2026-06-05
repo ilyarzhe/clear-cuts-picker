@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Select Spreadsheet</title>
+<title>Select Spreadsheets</title>
 <style>
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -18,6 +18,8 @@ body {
 }
 #content { text-align: center; padding: 40px; max-width: 480px; }
 h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
+#hint { color: #5f6368; font-size: 13px; margin-bottom: 8px; display: none; }
+#hint.visible { display: block; }
 #status { color: #5f6368; font-size: 14px; }
 #error { color: #d93025; font-size: 14px; line-height: 1.5; display: none; }
 .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #e8eaed; border-top-color: #1a73e8; border-radius: 50%; animation: spin .8s linear infinite; margin-right: 8px; vertical-align: middle; }
@@ -26,7 +28,8 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
 </head>
 <body>
 <div id="content">
-    <h1>Select a Spreadsheet</h1>
+    <h1>Select Spreadsheets</h1>
+    <div id="hint">Tip: Check multiple files to grant access in one go</div>
     <div id="status"><span class="spinner"></span>Loading Google Picker...</div>
     <div id="error"></div>
 </div>
@@ -89,6 +92,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                 })
                 .build();
             picker.setVisible(true);
+            document.getElementById('hint').className = 'visible';
         } catch (e) {
             showError('Failed to initialize Google Picker. Token may be expired. Close this tab and try reconnecting.');
         }
