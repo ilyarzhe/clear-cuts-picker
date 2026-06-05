@@ -59,16 +59,23 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                 .setOAuthToken(token)
                 .setDeveloperKey(apiKey)
                 .setAppId(appId)
+                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
                 .addView(view)
                 .setCallback(function(data) {
                     if (data.action === google.picker.Action.PICKED) {
-                        var doc = data.docs[0];
+                        var docs = data.docs;
+                        var fileIds = docs.map(function(d) { return d.id; });
+                        var fileNames = docs.map(function(d) { return d.name; });
+                        var fileUrls = docs.map(function(d) { return d.url; });
                         if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
                             chrome.runtime.sendMessage(extId, {
                                 type: 'pickerResult',
-                                fileId: doc.id,
-                                fileName: doc.name,
-                                fileUrl: doc.url
+                                fileIds: fileIds,
+                                fileNames: fileNames,
+                                fileUrls: fileUrls,
+                                fileId: fileIds[0],
+                                fileName: fileNames[0],
+                                fileUrl: fileUrls[0]
                             }, function() {});
                         }
                     } else if (data.action === google.picker.Action.CANCEL) {
