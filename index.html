@@ -35,7 +35,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
     var params = new URLSearchParams(window.location.search.substring(1));
     var extId = params.get('extId');
     var appId = params.get('appId');
-    var apiKey = params.get('apiKey') || null;
+    var apiKey = null;
     var token = null;
     var pickerApiLoaded = false;
     var pickerReady = false;
@@ -88,7 +88,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
     }
 
     function requestPickerAuth() {
-    if (!extId || !appId || !apiKey) {
+    if (!extId || !appId) {
         showError('Missing required parameters. Please close this tab and try again.');
         return;
     }
@@ -102,7 +102,12 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                 showError('Could not load your Google token. Close this tab and try reconnecting.');
                 return;
             }
+            if (!response.apiKey) {
+                showError('Picker API key not configured. Rebuild extension with PICKER_API_KEY in .env.');
+                return;
+            }
             token = response.token;
+            apiKey = response.apiKey;
             buildPicker();
         });
     }
