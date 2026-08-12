@@ -48,10 +48,23 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
     var params = new URLSearchParams(window.location.search.substring(1));
     var extId = params.get('extId');
     var appId = params.get('appId');
+    var nonce = null;
+    if (window.location.hash) {
+        var hashParams = new URLSearchParams(window.location.hash.substring(1));
+        nonce = hashParams.get('nonce');
+    }
     var apiKey = null;
     var token = null;
     var pickerApiLoaded = false;
     var pickerReady = false;
+
+    function buildMessage(extra) {
+        var msg = extra || {};
+        if (nonce) {
+            msg.nonce = nonce;
+        }
+        return msg;
+    }
 
     function showError(msg) {
         document.getElementById('status').style.display = 'none';
@@ -59,7 +72,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
         errEl.style.display = 'block';
         errEl.textContent = msg || 'An unexpected error occurred.';
         if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-            chrome.runtime.sendMessage(extId, { type: 'pickerResult', error: msg || 'Unknown error' });
+            chrome.runtime.sendMessage(extId, buildMessage({ type: 'pickerResult', error: msg || 'Unknown error' }));
         }
     }
 
@@ -85,7 +98,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                         var fileNames = docs.map(function(d) { return d.name; });
                         var fileUrls = docs.map(function(d) { return d.url; });
                         if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                            chrome.runtime.sendMessage(extId, {
+                            chrome.runtime.sendMessage(extId, buildMessage({
                                 type: 'pickerResult',
                                 fileIds: fileIds,
                                 fileNames: fileNames,
@@ -93,14 +106,14 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                                 fileId: fileIds[0],
                                 fileName: fileNames[0],
                                 fileUrl: fileUrls[0]
-                            }, function() {});
+                            }), function() {});
                         }
                     } else if (data.action === google.picker.Action.CANCEL) {
                         if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                            chrome.runtime.sendMessage(extId, {
+                            chrome.runtime.sendMessage(extId, buildMessage({
                                 type: 'pickerResult',
                                 cancelled: true
-                            }, function() {});
+                            }), function() {});
                         }
                     }
                 })
@@ -121,7 +134,7 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
             showError('Could not connect to the extension. Close this tab and try again.');
             return;
         }
-        chrome.runtime.sendMessage(extId, { type: 'pickerAuthRequest' }, function(response) {
+        chrome.runtime.sendMessage(extId, buildMessage({ type: 'pickerAuthRequest' }), function(response) {
             if (chrome.runtime.lastError || !response || !response.token) {
                 console.error('[ClearCuts Picker] Failed to get auth token:', chrome.runtime.lastError ? chrome.runtime.lastError.message : 'no token in response');
                 showError('Could not load your Google token. Close this tab and try reconnecting.');
