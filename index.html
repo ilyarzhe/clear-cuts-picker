@@ -66,6 +66,44 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
         return msg;
     }
 
+    // Firefox path: the extension cannot be messaged directly (no
+    // externally_connectable), so messages go through the relay content script
+    // running on this page via window.postMessage.
+    function canMessageExtension() {
+        return typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
+    }
+
+    function postToExtension(msg) {
+        if (canMessageExtension()) {
+            return { sent: true, firefox: false };
+        }
+        window.postMessage(msg, window.location.origin);
+        return { sent: true, firefox: true };
+    }
+
+    // Firefox: the relay replies with pickerAuthResponse on this window.
+    window.addEventListener('message', function(event) {
+        if (event.origin !== window.location.origin) return;
+        var data = event.data;
+        if (!data || data.type !== 'pickerAuthResponse') return;
+        if (data.nonce && nonce && data.nonce !== nonce) return;
+        if (data.error) {
+            showError(data.error);
+            return;
+        }
+        if (!data.token) {
+            showError('Could not load your Google token. Close this tab and try reconnecting.');
+            return;
+        }
+        if (!data.apiKey) {
+            showError('Picker API key not configured. Rebuild extension with PICKER_API_KEY in .env.');
+            return;
+        }
+        token = data.token;
+        apiKey = data.apiKey;
+        buildPicker();
+    });
+
     function showError(msg) {
         document.getElementById('status').style.display = 'none';
         var errEl = document.getElementById('error');
@@ -97,8 +135,8 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                         var fileIds = docs.map(function(d) { return d.id; });
                         var fileNames = docs.map(function(d) { return d.name; });
                         var fileUrls = docs.map(function(d) { return d.url; });
-                        if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                            chrome.runtime.sendMessage(extId, buildMessage({
+                        if (extId) {
+                            postToExtension(buildMessage({
                                 type: 'pickerResult',
                                 fileIds: fileIds,
                                 fileNames: fileNames,
@@ -106,14 +144,14 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                                 fileId: fileIds[0],
                                 fileName: fileNames[0],
                                 fileUrl: fileUrls[0]
-                            }), function() {});
+                            }));
                         }
                     } else if (data.action === google.picker.Action.CANCEL) {
-                        if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                            chrome.runtime.sendMessage(extId, buildMessage({
+                        if (extId) {
+                            postToExtension(buildMessage({
                                 type: 'pickerResult',
                                 cancelled: true
-                            }), function() {});
+                            }));
                         }
                     }
                 })
@@ -130,8 +168,15 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
         showError('Missing required parameters. Please close this tab and try again.');
         return;
     }
-        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
-            showError('Could not connect to the extension. Close this tab and try again.');
+        if (!canMessageExtension()) {
+            // Firefox: wait for the relay reply (pickerAuthResponse listener above).
+            // If the relay never replies (no extension installed), surface the
+            // generic connection error after the API load timeout.
+            if (nonce) {
+                postToExtension(buildMessage({ type: 'pickerAuthRequest' }));
+            } else {
+                showError('Could not connect to the extension. Close this tab and try again.');
+            }
             return;
         }
         chrome.runtime.sendMessage(extId, buildMessage({ type: 'pickerAuthRequest' }), function(response) {
