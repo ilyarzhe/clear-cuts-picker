@@ -114,6 +114,29 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
         }
     }
 
+    function isFirefoxFamily() {
+        return /Firefox/i.test(navigator.userAgent);
+    }
+
+    // Firefox/Zen block third-party cookies by default, which breaks the
+    // Google Picker iframe (docs.google.com embedded in this page). Detect it
+    // via the Storage Access API and give the user a one-click fix.
+    function hasThirdPartyStorageAccess() {
+        if (typeof document.hasStorageAccess === 'function') {
+            return document.hasStorageAccess()
+                .then(function(ok) { return ok; })
+                .catch(function() { return true; });
+        }
+        return Promise.resolve(true);
+    }
+
+    function showTrackingProtectionHint() {
+        var msg = 'Your browser is blocking the Google Picker (third-party cookies). '
+            + 'Fix: click the shield icon in the address bar, choose "Disable protection for this site", '
+            + 'then reload this page and try again.';
+        showError(msg);
+    }
+
     function buildPicker() {
         if (pickerReady || !pickerApiLoaded || !token || !apiKey) return;
         pickerReady = true;
@@ -152,6 +175,19 @@ h1 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
                                 type: 'pickerResult',
                                 cancelled: true
                             }));
+                        }
+                    } else if (data.action === google.picker.Action.ERROR) {
+                        console.error('[ClearCuts Picker] Picker error:', data);
+                        if (isFirefoxFamily()) {
+                            hasThirdPartyStorageAccess().then(function(hasAccess) {
+                                if (!hasAccess) {
+                                    showTrackingProtectionHint();
+                                } else {
+                                    showError('Google Picker failed to load. Close this tab and try again.');
+                                }
+                            });
+                        } else {
+                            showError('Google Picker failed to load. Close this tab and try again.');
                         }
                     }
                 })
