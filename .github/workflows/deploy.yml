@@ -19,4 +19,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 0f81b46c359235b8ee1295a8090bfe1a
-          command: pages deploy . --project-name clear-cuts-picker --branch main --production
+          command: pages deploy . --project-name clear-cuts-picker --branch main
